@@ -1,0 +1,35 @@
+name: CI — GHA (bundler-cache)
+
+on:
+  push:
+  workflow_dispatch:
+
+# Uses ruby/setup-ruby's bundler-cache: true — the canonical "good citizen"
+# GHA setup. The action handles bundle install and caching internally, so the
+# install time for this workflow is the *setup-ruby* step's duration (visible
+# in the run UI), NOT the timed step below. A separate `bundle install` after
+# the action is a no-op once gems are already installed.
+
+jobs:
+  build:
+    name: bundle install (bundler-cache)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system deps for native gems
+        run: sudo apt-get update && sudo apt-get install -y libpq-dev
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version-file: .ruby-version
+          bundler-cache: true
+
+      - name: Bundle install (no-op confirmation)
+        run: |
+          START=$(date +%s)
+          bundle install --jobs 4
+          echo "::notice::Re-run bundle install took $(($(date +%s) - START))s (expected ~1s — real install time is in the setup-ruby step above)"
+
+      - name: Smoke test
+        run: bundle exec rails --version

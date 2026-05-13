@@ -1,0 +1,32 @@
+name: CI — Avrea
+
+on:
+  push:
+  workflow_dispatch:
+
+# Same job as ci-gha-nocache, but on an Avrea runner. No explicit caching:
+# the edge package cache for rubygems.org is transparent at the network layer.
+
+jobs:
+  build:
+    name: bundle install (Avrea edge cache)
+    runs-on: avrea-ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system deps for native gems
+        run: sudo apt-get update && sudo apt-get install -y libpq-dev
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version-file: .ruby-version
+          bundler-cache: false
+
+      - name: Bundle install (timed)
+        run: |
+          START=$(date +%s)
+          bundle install --jobs 4
+          echo "::notice::Bundle install took $(($(date +%s) - START))s"
+
+      - name: Smoke test
+        run: bundle exec rails --version
